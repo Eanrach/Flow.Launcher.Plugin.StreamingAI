@@ -64,24 +64,6 @@ dotnet build -c Release
 - 生成中可点「⏹ 停止生成」；「🔄 重新生成」用同一问题重问；「🗑 清空对话」重置上下文。
 - 多轮：连续提问时，历史消息会作为上下文一并发给模型。
 
-## ⚠ 排错：输入 `ai` 没有触发插件（只在「任意关键字触发」下才响应）
-
-这是 **Flow Launcher 的 keyword 缓存**导致的，不是 `plugin.json` 写错。FL 会把每个插件的 Action Keyword **持久化缓存到它自己的 `Settings.json`**（`%LOCALAPPDATA%\FlowLauncher\Settings\Settings.json` 内的 `PluginsSettings.Plugins`）。一旦某个版本的插件首次加载时 keyword 未被正确解析，FL 就把该插件的 keyword 记为**空**并**永久忽略 `plugin.json` 里的 keyword**——此后无论怎么改 `plugin.json`，都只能靠「任意关键字触发 / 执行于每次搜索」才响应。
-
-修复（任选其一，推荐第 1 种）：
-
-1. **在 FL 插件设置里手动填 keyword（最简单，无需动文件）**：
-   打开 Flow Launcher → 设置（⚙）→ 插件 → 找到 **Streaming AI Chat** → 找到 **Action Keywords**（动作关键字）输入框 → 填入 `ai` → 保存。重启 FL 即生效。
-2. **清空 FL 对该插件的 keyword 缓存**：关闭 FL，编辑 `%LOCALAPPDATA%\FlowLauncher\Settings\Settings.json`，删除 `PluginsSettings` → `Plugins` 下 `ID` 为 `6E8B4F2A-1C3D-4E5F-9A0B-2D4F6E8C1A3B` 的那一项（或整个 `Plugins` 节点），保存后重启 FL，FL 会重新从 `plugin.json` 读取 `ActionKeywords: ["ai"]`。
-3. **换一个新的插件 ID**：修改 `plugin.json` 的 `ID` 为一个新的 GUID，并按新目录名重新安装（让 FL 把它当成全新插件读取 keyword）。
-
-> 本插件的 `plugin.json` 已同时声明 `ActionKeyword: "ai"` 与 `ActionKeywords: ["ai"]`，对旧版 / 新版 FL 都兼容。改完 `plugin.json` 后务必**重启 Flow Launcher** 才会重新加载。
-
-## ⚠ 排错：结果列表一直「等待首个 token」，直到点停止才整段显示
-
-这是**流式刷新没有真正派发到 UI 线程**导致的（详见「实现要点 → 流式刷新」）。旧实现依赖 `Application.Current.Dispatcher`，在插件上下文里常为 `null`，定时器静默不刷新。`Main.cs` 已改为在 `Query` / `Action` 等 UI 线程路径里捕获 `SynchronizationContext` 并用 `_uiContext.Post(ReQuery)` 派发。若仍遇到，请确认：
-- 使用的是**重新编译后的 dll**（旧 dll 仍会卡住）；
-- 已重启 Flow Launcher 加载新 dll。
 
 ## 设置项
 
